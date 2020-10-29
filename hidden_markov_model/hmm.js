@@ -22,7 +22,7 @@ var observedDict = new Object();
 var hiddenDict = new Object();
 
 /*Processes each JSON in the output directory*/
-const lyricsDirectory = "./data/output";
+const lyricsDirectory = "../data/output";
 (async () => {
 	try {
 		const files = await fs.promises.readdir(lyricsDirectory);
