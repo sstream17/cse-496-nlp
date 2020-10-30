@@ -29,8 +29,8 @@ for arg_index in range(1, len(sys.argv)):
     soup = BeautifulSoup(webpage, 'html.parser')
     html = soup.prettify('utf-8')
     song_json = {}
-    song_json["Lyrics"] = [];
-    song_json["Comments"] = [];
+    song_json["Lyrics"] = []
+    song_json["Comments"] = []
 
     #Extract Title of the song
     for title in soup.findAll('title'):
@@ -45,11 +45,11 @@ for arg_index in range(1, len(sys.argv)):
         comments = div.text.strip().split("\n")
         for comment in comments:
             if comment!="":
-                song_json["Comments"].append(comment);
+                song_json["Comments"].append(comment)
 
     #Extract the Lyrics of the song
     for div in soup.findAll('div', attrs = {'class': 'lyrics'}):
-        song_json["Lyrics"].append(div.text.strip().split("\n"));
+        song_json["Lyrics"].append(div.text.strip().split("\n"))
 
     #Save the json created with the file name as title + .json
     file_title = re.sub('[^A-Za-z0-9]+', '', song_json["Title"])
