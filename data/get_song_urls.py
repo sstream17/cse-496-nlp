@@ -26,10 +26,14 @@ urls = set([])
 
 wait = WebDriverWait(driver, 10)
 
+def is_valid_url(url):
+    return ("com/Nickelback" in url) and (not "version" in url) and (not "radio" in url) and (not "live" in url)
+
 while (last_length < current_length) or (iterations < 100):
     for i in range(starting_index, len(songs)):
         url = songs[i].find_element_by_tag_name('a').get_attribute('href')
-        urls.add(url)
+        if is_valid_url(url):
+            urls.add(url)
         
     driver.execute_script("arguments[0].scrollIntoView();", songs[-1])
     try:
@@ -47,3 +51,5 @@ while (last_length < current_length) or (iterations < 100):
 with open(f'song_urls.txt', 'w') as outfile:
     for url in urls:
         outfile.write(f'{url}\n')
+
+assert(len(urls) >= 113)
