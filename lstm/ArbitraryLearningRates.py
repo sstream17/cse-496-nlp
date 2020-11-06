@@ -2,6 +2,7 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow.keras.callbacks import *
+import tensorflow.keras.backend as backend
 
 # rates: list of arbitrary learning rates
 # patience: number of epochs with no improvement to determine a plateau
