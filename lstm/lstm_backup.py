@@ -14,9 +14,9 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
 
+
 import json
 
-from ArbitraryLearningRates import LearningRateCallback
 
 debug = False
 
@@ -123,62 +123,116 @@ model.add(tf.keras.layers.Dropout(0.2))
 model.summary()
 
 # Compile model
+learning_rates = [0.005, 0.001, 0.0005]
+def LearningRateCallback(tf.keras.callbacks.Callback):
+    def __init__(self, rates=[0.005, 0.001, 0.0005], patience=25, use_best_rates = False):
+        super(LearningRateCallback, self).__init__()
+        self.rates = rates
+        self.rate_index = 0
+        self.patience = patience
+        self.use_best = use_best_rates # flag
+        self.best_weights = None
+    
+    def on_train_begin(self):
+        self.wait = 0
+        self.stopped_epoch = 0
+    
+    def on_epoch_end(self, epoch):
+        current = logs.get("loss")
+        if np.less(current, self.best):
+            self.best = current
+            self.wait = 0
+            if self.use_best:
+                self.best_weights = self.model.get_weights()
+        else:
+            self.wait += 1
+            if self.wait >= self.patience:
+                if self.rate_index < len(self.rates) - 1:
+                    self.rate_index += 1
+                    backend.set_value(model.optimizer.lr, learning_rates[p])
+                    print("Changing rate to " + str(self.rates[self.rate_index]) + " on epoch " + str(epoch))
+                else:
+                    self.stopped_epoch = epoch
+                    self.model.stop_training = True
+                    if self.use_best:
+                        self.model.set_weights(self.best_weights)
+                        print("Early stopping ")
+    
+    def on_train_end(self):
+        if self.stopped_epoch > 0:
+            print("Ending early on epoch" + str(stopped_epoch))
+
 opt = tf.keras.optimizers.Adam(lr=0.005)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 
 # Start-stop a few times to try to work out of local minimums
-learning_rates = [0.005, 0.001, 0.0005, 0.0001]
-es = LearningRateCallback(rates=learning_rates, patience=10, restore_best_weights=False)
+init_epoch = 0
+passes = 3
+history = []
+for p in range(0,passes):
+    print("Pass " + str(p) + "; learning rate: " + str(learning_rates[p]))
+    # Establish early-stopping based on loss
+    es = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=25)
     
-# Fit model, print only for epoch
-history = model.fit(xs, ys, epochs=300, verbose=2, callbacks=[es])
+    # Select learning rate for pass
+    backend.set_value(model.optimizer.lr, learning_rates[p])
     
-# Save it in case we want to use this specific model later
-model.save("model")
+    # Fit model, print only for epoch
+    history.append(model.fit(xs, ys, epochs=init_epoch+200, initial_epoch=init_epoch, verbose=2, callbacks=[es]))
+    
+    # Save it in case we want to use this specific model later
+    model.save("model")
 
-# Set up how our generated lyrics will look
-seed_text = [integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)]]
-next_words = max_sequence_length
+    # Set up how our generated lyrics will look
+    seed_text = [integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)]]
+    next_words = max_sequence_length
 
-# Could do them all together but it's easier to conceptualize this way
-for part in seed_text:
-    seed = part
-    for i in range(next_words):
-        # Returns a list of lists, we just want one (the only)
-        token_list = tokenizer.texts_to_sequences([seed])[0]
-        
-        # Pad the list
-        token_list = pad_sequences([token_list], maxlen=max_sequence_length, padding="pre")
-        
-        # Index of maximum in predictions
-        predicted = np.argmax(model.predict(token_list), axis=-1)
-        
-        # find word corresponding to the maximal index
-        output_word = ""
-        for word, index in tokenizer.word_index.items():
-            if index == predicted:
-                output_word = word
+    # Could do them all together but it's easier to conceptualize this way
+    for part in seed_text:
+        seed = part
+        for i in range(next_words):
+            # Returns a list of lists, we just want one (the only)
+            token_list = tokenizer.texts_to_sequences([seed])[0]
+            
+            # Pad the list
+            token_list = pad_sequences([token_list], maxlen=max_sequence_length, padding="pre")
+            
+            # Index of maximum in predictions
+            predicted = np.argmax(model.predict(token_list), axis=-1)
+            
+            # Debug print
+            #x = model.predict(token_list)[0]
+            #if i == next_words-1:
+            #    for tok in x:
+            #        print(tok, end=" ")
+            #    print('')
+            
+            # find word corresponding to the maximal index
+            output_word = ""
+            for word, index in tokenizer.word_index.items():
+                if index == predicted:
+                    output_word = word
+                    break
+            if output_word == "endtoken":
                 break
-        if output_word == "endtoken":
-            break
-        seed = seed + " " + output_word
+            seed = seed + " " + output_word
 
-    print(seed)
+        print(seed)
 
-fig, ax1 = plt.subplots()
-fig, ax2 = plt.twinx()
+big_hist = history[0]
+for p in range(1,passes):
+    big_hist.history['loss'] += history[p].history['loss']
+    big_hist.history['accuracy']+= history[p].history['accuracy']
 
-# Plot loss
-ax1.plot(history.history['loss'])
-ax1.ylabel('Loss')
-ax1.xlabel('Epoch')
+plt.plot(big_hist.history['loss'])
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.savefig('loss.png')
 
-# Plot accuracy
-ax2.plot(history.history['accuracy'])
-ax2.ylabel('Accuracy')
-
-fig.tight_layout
-fit.savefig('metrics.png')
+plt.plot(big_hist.history['accuracy'])
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.savefig('accuracy.png')
 
 
 
