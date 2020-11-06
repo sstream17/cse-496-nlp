@@ -1,3 +1,5 @@
+# To run this program, install Python 3.7+ and execute the command 'python .\markov_chain.py [, --laplace, -n 10, -w initWord]' from a CLI in this directory
+
 import json
 import os
 import random
@@ -97,7 +99,20 @@ lyrics_directory = r'../data/output'
 
 lyrics_dict = {}
 
-init_word = sys.argv[1] if len(sys.argv) >= 2 else ''
+use_init_word = '-w' in sys.argv
+init_word = ''
+
+if use_init_word:
+    init_word_index = sys.argv.index('-w')
+    init_word = sys.argv[init_word_index + 1]
+
+use_number_lines = '-n' in sys.argv
+number_lines = 1
+
+if use_number_lines:
+    number_lines_index = sys.argv.index('-n')
+    number_lines = int(sys.argv[number_lines_index + 1])
+
 
 use_laplace = '--laplace' in sys.argv
 
@@ -112,4 +127,5 @@ for filename in os.listdir(lyrics_directory):
 if use_laplace:
     laplace_smoothing(lyrics_dict)
 
-print(create_sentence(lyrics_dict, init_word))
+for _ in range(number_lines):
+    print(create_sentence(lyrics_dict, init_word))
