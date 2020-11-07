@@ -7,7 +7,6 @@ import numpy as np
 import matplotlib.pyplot  as plt
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import tensorflow.keras.backend as backend
 from tensorflow.keras.callbacks import *
 from tensorflow.keras.layers import LSTM, Bidirectional, Dense, Input
 from tensorflow.keras.models import Model
@@ -127,11 +126,11 @@ opt = tf.keras.optimizers.Adam(lr=0.005)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 
 # Start-stop a few times to try to work out of local minimums
-learning_rates = [0.005, 0.001, 0.0005, 0.0001]
-es = LearningRateCallback(rates=learning_rates, patience=10, restore_best_weights=False)
+learning_rates = [5e-3, 1e-3, 5e-4, 1e-4, 1e-5, 1e-6]
+es = LearningRateCallback(rates=learning_rates, patience=25, restore_best_weights=False, early_stopping=False)
     
 # Fit model, print only for epoch
-history = model.fit(xs, ys, epochs=300, verbose=2, callbacks=[es])
+history = model.fit(xs, ys, epochs=5000, verbose=2, callbacks=[es])
     
 # Save it in case we want to use this specific model later
 model.save("model")
@@ -166,19 +165,20 @@ for part in seed_text:
     print(seed)
 
 fig, ax1 = plt.subplots()
-fig, ax2 = plt.twinx()
+ax2 = plt.twinx()
 
 # Plot loss
-ax1.plot(history.history['loss'])
-ax1.ylabel('Loss')
-ax1.xlabel('Epoch')
+ax1.plot(history.history['loss'], color='tab:blue')
+ax1.set_ylabel('Loss')
+ax1.set_xlabel('Epoch')
 
 # Plot accuracy
-ax2.plot(history.history['accuracy'])
-ax2.ylabel('Accuracy')
+ax2.plot(history.history['accuracy'], color='tab:gray')
+ax2.set_ylabel('Accuracy')
 
-fig.tight_layout
-fit.savefig('metrics.png')
+fig.legend()
+fig.tight_layout()
+fig.savefig('metrics.png')
 
 
 
