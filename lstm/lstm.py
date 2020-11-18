@@ -20,13 +20,7 @@ from ArbitraryLearningRates import LearningRateCallback
 debug = False
 
 bag = []
-if debug:
-    with open("remind.txt") as f:
-        bag = f.readlines()
-        #bag.append(f.readlines())
-    with open("photograph.txt") as f:
-        bag = bag + f.readlines()
-elif os.path.exists('all_lyrics.txt'):
+if os.path.exists('all_lyrics.txt'):
     # Read all data from one file
     with open("all_lyrics.txt") as f:
         bag = f.readlines()
@@ -101,22 +95,16 @@ ys = tf.keras.utils.to_categorical(labels, num_classes=num_words)
 print(xs.shape)
 print(ys.shape)
 
+dim = max_sequence_length*2
 
 # Model time
 model = tf.keras.Sequential()
-model.add(tf.keras.layers.Embedding(num_words, max_sequence_length*2, input_length=max_sequence_length))
-model.add(LSTM(int(np.floor(max_sequence_length*2)), return_sequences=True))
-#model.add(tf.keras.layers.Dropout(0.2))
-model.add(Bidirectional(LSTM(int(np.floor(max_sequence_length*2)), return_sequences=True)))
-#model.add(tf.keras.layers.Dropout(0.2))
-model.add(Bidirectional(LSTM(int(np.floor(max_sequence_length*2)), return_sequences=True)))
-model.add(tf.keras.layers.Dropout(0.2))
-model.add(Bidirectional(LSTM(int(np.floor(max_sequence_length*2)))))
-model.add(tf.keras.layers.Dropout(0.2))
-#model.add(Dense(num_words/10, activation="softmax"))
-#model.add(tf.keras.layers.Dropout(0.1))
+model.add(tf.keras.layers.Embedding(num_words, dim, input_length=max_sequence_length))
+model.add(Bidirectional(LSTM(dim, return_sequences=True)))
+model.add(Bidirectional(LSTM(dim, return_sequences=True)))
+model.add(Bidirectional(LSTM(dim)))
 model.add(Dense(num_words, activation="softmax"))
-model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dropout(0.1))
 
 # Model summary
 model.summary()
@@ -127,21 +115,23 @@ model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy
 
 # Start-stop a few times to try to work out of local minimums
 learning_rates = [5e-3, 1e-3, 5e-4, 1e-4, 1e-5, 1e-6]
-es = LearningRateCallback(rates=learning_rates, patience=25, restore_best_weights=False, early_stopping=False)
+es = LearningRateCallback(rates=learning_rates, patience=15, restore_best_weights=False, early_stopping=True)
+
+# Add a checkpoint callback
+check = ModelCheckpoint('checkpoint', save_freq=10)
     
 # Fit model, print only for epoch
-history = model.fit(xs, ys, epochs=5000, verbose=2, callbacks=[es])
+history = model.fit(xs, ys, epochs=350, verbose=2, callbacks=[es])
     
 # Save it in case we want to use this specific model later
 model.save("model")
 
 # Set up how our generated lyrics will look
-seed_text = [integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)], integer_to_word[random.randint(1,num_words)]]
 next_words = max_sequence_length
 
 # Could do them all together but it's easier to conceptualize this way
-for part in seed_text:
-    seed = part
+for j in range(0,20):
+    seed = integer_to_word[random.randint(1,num_words)]
     for i in range(next_words):
         # Returns a list of lists, we just want one (the only)
         token_list = tokenizer.texts_to_sequences([seed])[0]
