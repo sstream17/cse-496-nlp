@@ -123,19 +123,14 @@ dim = max_sequence_length*2
 
 # Layer descriptions
 x_in = Input(shape=(max_sequence_length,), dtype='int32')
-#y_in = Input(shape=(max_sequence_length,), dtype='int32')
 emb = tf.keras.layers.Embedding(num_words, dim, input_length=max_sequence_length)
 x_emb = emb(x_in)
-#y_emb = emb(y_in)
 lstm1 = LSTM(dim, return_sequences=True)
 x_seq_enc = lstm1(x_emb)
 x_att = attention(return_sequences=True)(x_emb)
-#y_seq_enc = lstm1(y_emb)
-#att_seq = Attention()([x_seq_enc,y_seq_enc])
-#concat = Concatenate(axis=-1)([x_seq_enc, att_seq])
 x_2 = Bidirectional(LSTM(dim, return_sequences=True))(x_att)
-#x_3 = Bidirectional(LSTM(dim, return_sequences=True))(x_2)
-x_4 = Bidirectional(LSTM(dim))(x_2)
+x_3 = Bidirectional(LSTM(dim, return_sequences=True))(x_2)
+x_4 = Bidirectional(LSTM(dim))(x_3)
 d = Dense(num_words, activation='softmax')(x_4)
 out = Dropout(0.1)(d)
 
@@ -151,13 +146,13 @@ model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy
 
 # Start-stop a few times to try to work out of local minimums
 learning_rates = [5e-3, 1e-3, 5e-4, 1e-4, 1e-5, 1e-6]
-es = LearningRateCallback(rates=learning_rates, patience=25, restore_best_weights=False, early_stopping=True)
+es = LearningRateCallback(rates=learning_rates, patience=15, restore_best_weights=False, early_stopping=False)
 
 # Add a checkpoint callback
 check = ModelCheckpoint('checkpoint', save_freq=10)
     
 # Fit model, print only for epoch
-history = model.fit(xs, ys, epochs=2000, verbose=2, callbacks=[es])
+history = model.fit(xs, ys, epochs=700, verbose=2, callbacks=[es])
     
 # Save it in case we want to use this specific model later
 model.save("model")
